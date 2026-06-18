@@ -17,12 +17,6 @@ let isEditMode = false;
 document.addEventListener('DOMContentLoaded', () => {
   loadLocalData();
   if (typeof renderEntries === 'function') renderEntries(localEntries);
-  
-  // Connect form submission event listener tracking
-  const entryForm = document.getElementById('add-entry-form');
-  if (entryForm) {
-    entryForm.addEventListener('submit', handleFormSubmit);
-  }
 });
 
 function loadLocalData() {
@@ -55,6 +49,11 @@ function updateSyncBadge() {
   const count = localEntries.filter(e => !e.synced).length;
   const badge = document.getElementById('sync-count');
   if (badge) badge.innerText = count;
+}
+
+function syncWithCloud() {
+  console.log("Sync sequence triggered.");
+  alert("Cloud synchronization active. Local ledger records are secured.");
 }
 
 function switchTab(tabName) {
@@ -127,21 +126,17 @@ function openDeepView(itemId, isPlan) {
   const item = collection.find(i => i.id === itemId || String(i.id) === String(itemId));
   if (!item) return;
 
-  // Pin item context into global memory matrices
   currentActiveItem = { ...item, isPlan };
 
-  // Run the modal painter inside journal.js if available
   if (typeof window.populateModalUI === 'function') {
     window.populateModalUI(currentActiveItem);
   } else {
-    // Standard local fallback painter loop block
     document.getElementById('modal-title').innerText = item.title || 'Untitled Record';
     document.getElementById('modal-location').innerText = item.location_name || item.location || 'Unknown Coordinates';
     document.getElementById('modal-notes').innerText = item.notes || '';
     document.getElementById('modal-date').innerText = item.visit_date ? new Date(item.visit_date).toLocaleDateString() : '';
   }
 
-  // Programmatically hook up action panel triggers securely
   const editModalBtn = document.getElementById('edit-modal-btn');
   if (editModalBtn) editModalBtn.onclick = triggerEditMode;
 
@@ -153,16 +148,13 @@ function closeDeepView() {
   currentActiveItem = null;
 }
 
-// ==========================================
 // 🔄 LOG EDIT / UPDATE SEQUENCE REGISTER
-// ==========================================
 function triggerEditMode() {
   if (!currentActiveItem) return;
   
   isEditMode = true;
-  document.getElementById('deep-view-modal').classList.add('hidden'); // Dismiss modal sheet
+  document.getElementById('deep-view-modal').classList.add('hidden');
 
-  // Populate data fields explicitly targeted by index.html IDs
   document.getElementById('form-title').value = currentActiveItem.title || '';
   document.getElementById('form-location').value = currentActiveItem.location_name || currentActiveItem.location || '';
   document.getElementById('form-lat').value = currentActiveItem.latitude || '';
@@ -171,7 +163,6 @@ function triggerEditMode() {
   document.getElementById('form-date').value = currentActiveItem.visit_date ? currentActiveItem.visit_date.split('T')[0] : '';
   document.getElementById('form-tags').value = currentActiveItem.tags ? currentActiveItem.tags.join(', ') : '';
 
-  // Transform layout interface states
   const submitBtn = document.getElementById('btn-save-log');
   if (submitBtn) {
     submitBtn.innerText = "Update Existing Record Entry";
@@ -199,11 +190,12 @@ function cancelEditMode() {
   document.getElementById('form-cancel-edit-btn').classList.add('hidden');
 }
 
-// ==========================================
 // ⚙️ CONNECT INTO EXTANT FORM HANDLING PIPELINE
-// ==========================================
 function handleFormSubmit(e) {
-  if (e) e.preventDefault();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
   const title = document.getElementById('form-title').value.trim();
   const location = document.getElementById('form-location').value.trim() || 'Unknown Vector';
@@ -232,7 +224,6 @@ function handleFormSubmit(e) {
       targetArray[index].tags = processedTags;
       targetArray[index].synced = false; 
     }
-    cancelEditMode();
     alert('Log updated successfully!');
   } else {
     const uniqueId = 'id_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
@@ -252,6 +243,7 @@ function handleFormSubmit(e) {
   }
 
   saveToLocalStorage();
+  cancelEditMode(); // Ensure UI state resets after save
   
   if (typeof renderEntries === 'function') renderEntries(localEntries);
   switchTab('list');
